@@ -1,6 +1,7 @@
 
 var co = require('..');
 var assert = require('assert');
+var Q = require('q');
 
 function get(val, err, error) {
   return function(done){
@@ -9,6 +10,13 @@ function get(val, err, error) {
       done(err, val);
     }, 10);
   }
+}
+
+function getPromise(val, err) {
+  return Q.fcall(function(){
+    if (err) throw err;
+    return val;
+  });
 }
 
 describe('co(fn)', function(){
@@ -30,12 +38,36 @@ describe('co(fn)', function(){
     })
   })
 
+  describe('with one promise yield', function(){
+    it('should work', function(done){
+      co(function *(){
+        var a = yield getPromise(1);
+        a.should.equal(1);
+        done();
+      });
+    })
+  })
+
   describe('with several yields', function(){
     it('should work', function(done){
       co(function *(){
         var a = yield get(1);
         var b = yield get(2);
         var c = yield get(3);
+
+        [a,b,c].should.eql([1,2,3]);
+
+        done();
+      });
+    })
+  })
+
+  describe('with several promise yields', function(){
+    it('should work', function(done){
+      co(function *(){
+        var a = yield getPromise(1);
+        var b = yield getPromise(2);
+        var c = yield getPromise(3);
 
         [a,b,c].should.eql([1,2,3]);
 
@@ -86,6 +118,25 @@ describe('co(fn)', function(){
 
         assert('boom' == error.message);
         var ret = yield get(1);
+        assert(1 == ret);
+        done();
+      });
+    })
+  })
+
+  describe('when a promise is rejected', function(){
+    it('should throw and resume', function(done){
+      var error;
+
+      co(function *(){
+        try {
+          yield getPromise(1, new Error('boom'));
+        } catch (err) {
+          error = err;
+        }
+
+        assert('boom' == error.message);
+        var ret = yield getPromise(1);
         assert(1 == ret);
         done();
       });
@@ -183,7 +234,7 @@ describe('co(fn)', function(){
     })
   })
 
-  describe('when yielding a non-function', function(){
+  describe('when yielding neither a function nor a promise', function(){
     it('should throw', function(done){
       var errors = [];
 
@@ -200,7 +251,7 @@ describe('co(fn)', function(){
           errors.push(err.message);
         }
 
-        errors.should.eql(['yielded a non-function', 'yielded a non-function']);
+        errors.should.eql(['yielded neither a function nor a promise', 'yielded neither a function nor a promise']);
         done();
       });
     })
