@@ -1,7 +1,6 @@
 
 var co = require('..');
 var assert = require('assert');
-var Q = require('q');
 
 function get(val, err, error) {
   return function(done){
